@@ -16,11 +16,9 @@
 
 package org.javarosa.core.model.utils.test;
 
-import junit.framework.Test;
-import junit.framework.TestCase;
-import junit.framework.TestSuite;
 import org.javarosa.core.model.utils.DateUtils;
 import org.javarosa.core.model.utils.DateUtils.DateFields;
+import org.junit.Test;
 
 import java.text.DateFormat;
 import java.util.Calendar;
@@ -29,60 +27,19 @@ import java.util.Locale;
 import java.util.SimpleTimeZone;
 import java.util.TimeZone;
 
-public class DateUtilsTests extends TestCase {
+import static junit.framework.TestCase.fail;
+import static org.junit.Assert.assertEquals;
 
-    private static int NUM_TESTS = 7;
-
-    Date currentTime;
-    Date minusOneHour;
-
-    public DateUtilsTests(String name) {
-        super(name);
-        System.out.println("Running " + this.getClass().getName() + " test: " + name + "...");
-    }
-
-    public void setUp() throws Exception {
-        super.setUp();
-
-        currentTime = new Date();
-        minusOneHour = new Date(new Date().getTime() - (1000 * 60));
-
-    }
-
-    public static Test suite() {
-
-        TestSuite dateSuite = new TestSuite();
-
-        for (int i = 1; i <= NUM_TESTS; i++) {
-            final int testID = i;
-
-            dateSuite.addTest(new DateUtilsTests(testMaster(testID)));
-        }
-
-        return dateSuite;
-
-    }
-
-    public static String testMaster(int testID) {
-        switch (testID) {
-		case 1: return "testGetXMLStringValueFormat";
-		case 2: return "testSetDates";
-		case 3: return "testNullDates";
-		case 4: return "testTimeParses";
-		case 5: return "testParity";
-		case 6: return "testParseTime_with_DST";
-		case 7: return "testDateTimeParses";
-        }
-        throw new IllegalStateException("Unexpected index");
-    }
+public class DateUtilsTests {
 
     /**
      * This test ensures that the Strings returned
      * by the getXMLStringValue function are in
      * the proper XML compliant format.
      */
+    @Test
     public void testGetXMLStringValueFormat() {
-        String currentDate = DateUtils.getXMLStringValue(currentTime);
+        String currentDate = DateUtils.getXMLStringValue(new Date());
         assertEquals("The date string was not of the proper length", currentDate.length(), "YYYY-MM-DD".length());
         assertEquals("The date string does not have proper year formatting", currentDate.indexOf("-"), "YYYY-".indexOf("-"));
         try {
@@ -102,16 +59,7 @@ public class DateUtilsTests extends TestCase {
         }
     }
 
-    public void testNullDates() {
-        // TODO Auto-generated method stub
-
-    }
-
-    public void testSetDates() {
-        // TODO Auto-generated method stub
-
-    }
-
+    @Test
     public void testDateTimeParses() {
 
         TimeZone.setDefault(TimeZone.getTimeZone("UTC"));
@@ -170,6 +118,7 @@ public class DateUtilsTests extends TestCase {
         }
     }
 
+    @Test
     public void testTimeParses() {
         //This is all kind of tricky. We need to assume J2ME level compliance, so
         //dates won't every be assumed to have an intrinsic timezone, they'll be
@@ -231,6 +180,12 @@ public class DateUtilsTests extends TestCase {
         TimeZone.setDefault(null);
     }
 
+    @Test
+    public void returnsTimeWithSameTimezone() {
+        Date d = DateUtils.parseTime("13:14:15.123-07");
+        assertEquals(7 * 60, d.getTimezoneOffset());  // Don’t mind the deprecation. Rewrite with Joda-Time later?
+    }
+
     private void testTime(String in, long test) {
         try {
             Date d = DateUtils.parseTime(in);
@@ -251,6 +206,7 @@ public class DateUtilsTests extends TestCase {
         return -d.getTime();
     }
 
+    @Test
     public void testParity() {
 
         testCycle(new Date(1300139579000l));
@@ -286,6 +242,7 @@ public class DateUtilsTests extends TestCase {
 
     }
 
+    @Test
     public void testParseTime_with_DST() throws Exception {
         Locale.setDefault(Locale.US);
 
