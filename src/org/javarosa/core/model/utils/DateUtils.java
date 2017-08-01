@@ -25,7 +25,9 @@ import java.util.ArrayList;
 import org.javarosa.core.services.locale.Localization;
 import org.javarosa.core.util.MathUtils;
 
+import org.joda.time.DateTime;
 import org.joda.time.LocalDateTime;
+import org.joda.time.format.ISODateTimeFormat;
 
 /**
  * Static utility methods for Dates in j2me
@@ -315,18 +317,12 @@ public class DateUtils {
 	/* ==== PARSING DATES/TIMES FROM STANDARD STRINGS ==== */
 
     public static Date parseDateTime(String str) {
-        DateFields fields = new DateFields();
-        int i = str.indexOf("T");
-        if (i != -1) {
-            if (!parseDate(str.substring(0, i), fields) || !parseTime(str.substring(i + 1), fields)) {
-                return null;
-            }
-        } else {
-            if (!parseDate(str, fields)) {
-                return null;
-            }
+        try {
+            DateTime p = ISODateTimeFormat.dateTimeParser().parseDateTime(str);
+            return p.toDate();
+        } catch (Exception ex) {
+            return null;
         }
-        return getDate(fields);
     }
 
     public static Date parseDate(String str) {
@@ -338,15 +334,12 @@ public class DateUtils {
     }
 
     public static Date parseTime(String str) {
-        DateFields fields = new DateFields();
-        if (!parseTime(str, fields)) {
+        try {
+            DateTime p = ISODateTimeFormat.timeParser().parseDateTime(str);
+            return p.toDate();
+        } catch (Exception ex) {
             return null;
         }
-        // time zone may wrap time across midnight. Clear that.
-        fields.year = 1970;
-        fields.month = 1;
-        fields.day = 1;
-        return getDate(fields);
     }
 
     private static boolean parseDate(String dateStr, DateFields f) {
