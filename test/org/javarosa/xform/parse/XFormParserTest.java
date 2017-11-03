@@ -283,6 +283,12 @@ public class XFormParserTest {
         assertEquals("Number of error messages", 0, parseResult.errorMessages.size());
     }
 
+    @Test public void parsesCountNenEmptyForm() throws IOException {
+        ParseResult parseResult = parse(r("count-non-empty-form.xml"));
+        assertEquals(parseResult.formDef.getTitle(), "Simple Form");
+        assertEquals("Number of error messages", 0, parseResult.errorMessages.size());
+    }
+
     private ParseResult parse(Path formName) throws IOException {
         XFormParser parser = new XFormParser(new FileReader(formName.toString()));
         final List<String> errorMessages = new ArrayList<>();
