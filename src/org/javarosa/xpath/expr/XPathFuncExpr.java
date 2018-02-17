@@ -16,10 +16,6 @@
 
 package org.javarosa.xpath.expr;
 
-import java.io.UnsupportedEncodingException;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
-import javax.xml.bind.DatatypeConverter;
 import org.javarosa.core.model.condition.EvaluationContext;
 import org.javarosa.core.model.condition.IFunctionHandler;
 import org.javarosa.core.model.condition.pivot.UnpivotableExpressionException;
@@ -466,26 +462,8 @@ public class XPathFuncExpr extends XPathExpression {
 
             return GeoUtils.calculateAreaOfGPSPolygonOnEarthInSquareMeters(gpsCoordinatesList);
         } else if (name.equals("digest") && (args.length == 2 || args.length == 3)) {
-            MessageDigest digest;
-            try {
-                digest = MessageDigest.getInstance((String) argVals[1]);
-            } catch (NoSuchAlgorithmException e) {
-                throw new XPathTypeMismatchException("The function digest received a non supported cryptographic hashing algorithm '" + argVals[1] + "'. Valid values are MD5, SHA-1, SHA-256");
-            }
-
-            // Use UTF-8 encoding when reading data to be hashed by default
-            byte[] result;
-            try {
-                result = digest.digest(((String) argVals[0]).getBytes("UTF-8"));
-            } catch (UnsupportedEncodingException e) {
-                throw new XPathTypeMismatchException("The function digest failed to use UTF-8 encoding");
-            }
-
-            // Hash encoding method defaults to base64 if no third arg is received
-            HashEncodingMethod encodingMethod = args.length == 3
-                ? HashEncodingMethod.from((String) argVals[2])
-                : HashEncodingMethod.BASE64;
-            return encodingMethod.encode(result);
+            return Digests.digest((String) argVals[0], (String) argVals[1],
+                    args.length == 3 ? (String) argVals[2] : null);
         } else {
             //check for custom handler
             IFunctionHandler handler = funcHandlers.get(name);
@@ -1358,39 +1336,5 @@ public class XPathFuncExpr extends XPathExpression {
 
         //TODO: Inner eval here with eval'd args to improve speed
         return eval(model, evalContext);
-
-    }
-
-    enum HashEncodingMethod {
-        HEX("hex") {
-            @Override
-            String encode(byte[] bytes) {
-                StringBuilder stringBuffer = new StringBuilder();
-                for (byte aResult : bytes)
-                    stringBuffer.append(Integer.toString((aResult & 0xff) + 0x100, 16).substring(1));
-                return stringBuffer.toString();
-            }
-        },
-        BASE64("base64") {
-            @Override
-            String encode(byte[] bytes) {
-                return DatatypeConverter.printBase64Binary(bytes);
-            }
-        };
-
-        private final String value;
-
-        HashEncodingMethod(String value) {
-            this.value = value;
-        }
-
-        static HashEncodingMethod from(String value) {
-            for(HashEncodingMethod candidate : values())
-                if (candidate.value.equals(value))
-                    return candidate;
-            throw new XPathTypeMismatchException("Unsupported hash encoding algorithm \"" + value + "\". Supported values are: \"hex\", \"base64\"");
-        }
-
-        abstract String encode(byte[] bytes);
     }
 }

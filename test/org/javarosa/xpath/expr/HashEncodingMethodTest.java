@@ -1,8 +1,8 @@
 package org.javarosa.xpath.expr;
 
 
-import static org.javarosa.xpath.expr.XPathFuncExpr.HashEncodingMethod.BASE64;
-import static org.javarosa.xpath.expr.XPathFuncExpr.HashEncodingMethod.HEX;
+import static org.javarosa.xpath.expr.Digests.HashEncodingMethod.BASE64;
+import static org.javarosa.xpath.expr.Digests.HashEncodingMethod.HEX;
 import static org.junit.Assert.assertEquals;
 
 import java.io.UnsupportedEncodingException;
@@ -17,7 +17,7 @@ public class HashEncodingMethodTest {
   public String testName;
 
   @Parameterized.Parameter(value = 1)
-  public XPathFuncExpr.HashEncodingMethod encodingMethod;
+  public Digests.HashEncodingMethod encodingMethod;
 
   @Parameterized.Parameter(value = 2)
   public String input;
