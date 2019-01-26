@@ -86,7 +86,7 @@ import org.javarosa.core.reference.InvalidReferenceException;
 import org.javarosa.core.services.locale.Localizer;
 import org.javarosa.core.services.locale.TableLocaleSource;
 import org.javarosa.core.util.CacheTable;
-import org.javarosa.core.util.StopWatch;
+import org.javarosa.core.util.OpTimer;
 import org.javarosa.core.util.externalizable.PrototypeFactory;
 import org.javarosa.core.util.externalizable.PrototypeFactoryDeprecated;
 import org.javarosa.model.xform.XPathReference;
@@ -398,7 +398,7 @@ public class XFormParser implements IXFormParserFunctions {
     @Deprecated
     public static Document getXMLDocument(Reader reader, CacheTable<String> stringCache)
         throws IOException {
-        final StopWatch ctParse = StopWatch.start();
+        final OpTimer ctParse = OpTimer.begin("Reading XML and parsing with kXML2");
         Document doc = new Document();
 
         try {
@@ -430,17 +430,17 @@ public class XFormParser implements IXFormParserFunctions {
         } catch (IOException e) {
             logger.error("Error closing reader", e);
         }
-        logger.info(ctParse.logLine("Reading XML and parsing with kXML2"));
+        ctParse.end();
 
-        StopWatch ctConsolidate = StopWatch.start();
+        OpTimer ctConsolidate = OpTimer.begin("Consolidating text");
         XmlTextConsolidator.consolidateText(stringCache, doc.getRootElement());
-        logger.info(ctConsolidate.logLine("Consolidating text"));
+        ctConsolidate.end();
 
         return doc;
     }
 
     private void parseDoc(Map<String, String> namespacePrefixesByUri) {
-        final StopWatch codeTimer = StopWatch.start();
+        final OpTimer cfdTimer = OpTimer.begin("Creating FormDef from parsed XML");
         _f = new FormDef();
 
         initState();
@@ -456,6 +456,7 @@ public class XFormParser implements IXFormParserFunctions {
         //reference the main node, so we do them first.
         //if this assumption is wrong, well, then we're screwed.
         if (instanceNodes.size() > 1) {
+            final OpTimer sw = OpTimer.begin("Parsing non-main instance nodes");
             for (int instanceIndex = 1; instanceIndex < instanceNodes.size(); instanceIndex++) {
                 final Element instance = instanceNodes.get(instanceIndex);
                 final String instanceId = instanceNodeIdStrs.get(instanceIndex);
@@ -480,11 +481,14 @@ public class XFormParser implements IXFormParserFunctions {
                     _f.addNonMainInstance(fi);
                 }
             }
+            sw.end();
         }
         //now parse the main instance
         if (mainInstanceNode != null) {
+            OpTimer t1 = OpTimer.begin("Parsing main instance nodes");
             FormInstance fi = instanceParser.parseInstance(mainInstanceNode, true,
                 instanceNodeIdStrs.get(instanceNodes.indexOf(mainInstanceNode)), namespacePrefixesByUri);
+            t1.end();
             /*
              Load namespaces definition (map of prefixes -> URIs) into a form instance so later it can be used
              during the form instance serialization (XFormSerializingVisitor#visit). If the map is not present, then
@@ -493,7 +497,9 @@ public class XFormParser implements IXFormParserFunctions {
              and prefixes in the form instance after the instance is restored and inserted into the form definition.
              */
             loadNamespaces(_xmldoc.getRootElement(), fi);
+            OpTimer t2 = OpTimer.begin("Adding main instance to FormDef");
             addMainInstanceToFormDef(mainInstanceNode, fi);
+            t2.end();
         }
 
         // Clear the caches, as these may not have been initialized
@@ -510,7 +516,7 @@ public class XFormParser implements IXFormParserFunctions {
         _f.getMainInstance().getRoot().clearChildrenCaches();
         _f.getMainInstance().getRoot().clearCaches();
 
-        logger.info(codeTimer.logLine("Creating FormDef from parsed XML"));
+        cfdTimer.end();
     }
 
     private final Set<String> validElementNames = unmodifiableSet(new HashSet<>(asList(
@@ -1838,16 +1844,23 @@ public class XFormParser implements IXFormParserFunctions {
      * e is the top-level _data_ node of the instance (immediate (and only) child of <instance>)
      */
     private void addMainInstanceToFormDef(Element e, FormInstance instanceModel) {
+        OpTimer ot = OpTimer.begin("loading instance data");
         loadInstanceData(e, instanceModel.getRoot(), _f);
+        ot.end();
 
+        OpTimer ot2 = OpTimer.begin("checking dependency cycles");
         checkDependencyCycles();
+        ot2.end();
         _f.setInstance(instanceModel);
         _f.setLocalizer(localizer);
 
+        OpTimer ot3 = OpTimer.begin("finalizing triggerables");
         try {
             _f.finalizeTriggerables();
         } catch (IllegalStateException ise) {
             throw new XFormParseException(ise.getMessage() == null ? "Form has an illegal cycle in its calculate and relevancy expressions!" : ise.getMessage());
+        } finally {
+            ot3.end();
         }
     }
 

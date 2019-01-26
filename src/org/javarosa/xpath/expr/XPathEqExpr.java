@@ -25,8 +25,6 @@ import org.javarosa.core.model.instance.DataInstance;
 import org.javarosa.core.util.externalizable.DeserializationException;
 import org.javarosa.core.util.externalizable.ExtUtil;
 import org.javarosa.core.util.externalizable.PrototypeFactory;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import static java.lang.Math.abs;
 import static org.javarosa.xpath.expr.XPathFuncExpr.toBoolean;
@@ -34,24 +32,19 @@ import static org.javarosa.xpath.expr.XPathFuncExpr.toNumeric;
 import static org.javarosa.xpath.expr.XPathFuncExpr.unpack;
 
 public class XPathEqExpr extends XPathBinaryOpExpr {
-    private static final Logger logger = LoggerFactory.getLogger(XPathEqExpr.class.getSimpleName());
     public boolean equal;
 
     /** Deserialization constructor */
     public XPathEqExpr() {
-        logger.debug("XPathEqExpr{}()", id());
     }
 
     public XPathEqExpr(boolean equal, XPathExpression a, XPathExpression b) {
         super(a, b);
         this.equal = equal;
-        logger.debug("XPathEqExpr{}({}, {}, {})", id(), equal, a, b);
     }
 
     @Override
     public Object eval(DataInstance model, EvaluationContext evalContext) {
-        logger.debug("XPathEqExpr{}.eval starting. model: {}, candidate: {}, expecting equal: {}", id(), model,
-            evalContext.candidateValue == null ? "None" : evalContext.candidateValue.getDisplayText(), equal);
         final Object aval = unpack(a.eval(model, evalContext));
         final Object bval = unpack(b.eval(model, evalContext));
         final boolean eq;
@@ -68,9 +61,7 @@ public class XPathEqExpr extends XPathBinaryOpExpr {
             eq = XPathFuncExpr.toString(aval).equals(XPathFuncExpr.toString(bval));
         }
 
-        boolean result = equal == eq;
-        logger.debug("XPathEqExpr{}.eval returning {}. a: {}, b: {}", id(), result, aval, bval);
-        return result;
+        return equal == eq;
     }
 
     public String toString() {
@@ -85,17 +76,11 @@ public class XPathEqExpr extends XPathBinaryOpExpr {
     public void readExternal(DataInputStream in, PrototypeFactory pf) throws IOException, DeserializationException {
         equal = ExtUtil.readBool(in);
         super.readExternal(in, pf);
-        logger.debug("XPathEqExpr{}.readExternal {}, {}, {}", id(), a, b, equal);
     }
 
     @Override
     public void writeExternal(DataOutputStream out) throws IOException {
-        logger.debug("XPathEqExpr{}.writeExternal", id());
         ExtUtil.writeBool(out, equal);
         super.writeExternal(out);
-    }
-
-    private String id() {
-        return "@" + Integer.toHexString(System.identityHashCode(this));
     }
 }
