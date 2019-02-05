@@ -24,6 +24,7 @@ import org.javarosa.core.model.instance.TreeReference;
 import org.javarosa.core.model.utils.IInstanceSerializingVisitor;
 import org.javarosa.core.services.transport.payload.ByteArrayPayload;
 import org.javarosa.core.services.transport.payload.IDataPayload;
+import org.javarosa.core.util.OpTimer;
 import org.javarosa.xform.util.XFormAnswerDataSerializer;
 import org.kxml2.kdom.Element;
 import org.kxml2.kdom.Node;
@@ -93,14 +94,18 @@ public class CompactSerializingVisitor implements IInstanceSerializingVisitor {
     public IDataPayload createSerializedPayload(FormInstance model, IDataReference ref)
         throws IOException {
 
+        OpTimer ot = new OpTimer("CompactSerializingVisitor.createSerializedPayload");
         if (this.serializer == null) {
             this.setAnswerDataSerializer(new XFormAnswerDataSerializer());
         }
         model.accept(this);
         if (resultText != null) {
             byte[] form = resultText.getBytes("UTF-8");
-            return new ByteArrayPayload(form, null, IDataPayload.PAYLOAD_TYPE_SMS);
+            ByteArrayPayload pl = new ByteArrayPayload(form, null, IDataPayload.PAYLOAD_TYPE_SMS);
+            ot.end();
+            return pl;
         } else {
+            ot.end();
             return null;
         }
     }

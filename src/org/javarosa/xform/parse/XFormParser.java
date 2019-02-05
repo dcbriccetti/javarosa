@@ -398,7 +398,7 @@ public class XFormParser implements IXFormParserFunctions {
     @Deprecated
     public static Document getXMLDocument(Reader reader, CacheTable<String> stringCache)
         throws IOException {
-        final OpTimer ctParse = OpTimer.begin("Reading XML and parsing with kXML2");
+        final OpTimer ctParse = new OpTimer("Reading XML and parsing with kXML2");
         Document doc = new Document();
 
         try {
@@ -432,7 +432,7 @@ public class XFormParser implements IXFormParserFunctions {
         }
         ctParse.end();
 
-        OpTimer ctConsolidate = OpTimer.begin("Consolidating text");
+        OpTimer ctConsolidate = new OpTimer("Consolidating text");
         XmlTextConsolidator.consolidateText(stringCache, doc.getRootElement());
         ctConsolidate.end();
 
@@ -440,7 +440,7 @@ public class XFormParser implements IXFormParserFunctions {
     }
 
     private void parseDoc(Map<String, String> namespacePrefixesByUri) {
-        final OpTimer cfdTimer = OpTimer.begin("Creating FormDef from parsed XML");
+        final OpTimer cfdTimer = new OpTimer("Creating FormDef from parsed XML");
         _f = new FormDef();
 
         initState();
@@ -456,7 +456,7 @@ public class XFormParser implements IXFormParserFunctions {
         //reference the main node, so we do them first.
         //if this assumption is wrong, well, then we're screwed.
         if (instanceNodes.size() > 1) {
-            final OpTimer sw = OpTimer.begin("Parsing non-main instance nodes");
+            final OpTimer sw = new OpTimer("Parsing non-main instance nodes");
             for (int instanceIndex = 1; instanceIndex < instanceNodes.size(); instanceIndex++) {
                 final Element instance = instanceNodes.get(instanceIndex);
                 final String instanceId = instanceNodeIdStrs.get(instanceIndex);
@@ -485,7 +485,7 @@ public class XFormParser implements IXFormParserFunctions {
         }
         //now parse the main instance
         if (mainInstanceNode != null) {
-            OpTimer t1 = OpTimer.begin("Parsing main instance nodes");
+            OpTimer t1 = new OpTimer("Parsing main instance nodes");
             FormInstance fi = instanceParser.parseInstance(mainInstanceNode, true,
                 instanceNodeIdStrs.get(instanceNodes.indexOf(mainInstanceNode)), namespacePrefixesByUri);
             t1.end();
@@ -497,7 +497,7 @@ public class XFormParser implements IXFormParserFunctions {
              and prefixes in the form instance after the instance is restored and inserted into the form definition.
              */
             loadNamespaces(_xmldoc.getRootElement(), fi);
-            OpTimer t2 = OpTimer.begin("Adding main instance to FormDef");
+            OpTimer t2 = new OpTimer("Adding main instance to FormDef");
             addMainInstanceToFormDef(mainInstanceNode, fi);
             t2.end();
         }
@@ -1844,17 +1844,17 @@ public class XFormParser implements IXFormParserFunctions {
      * e is the top-level _data_ node of the instance (immediate (and only) child of <instance>)
      */
     private void addMainInstanceToFormDef(Element e, FormInstance instanceModel) {
-        OpTimer ot = OpTimer.begin("loading instance data");
+        OpTimer ot = new OpTimer("loading instance data");
         loadInstanceData(e, instanceModel.getRoot(), _f);
         ot.end();
 
-        OpTimer ot2 = OpTimer.begin("checking dependency cycles");
+        OpTimer ot2 = new OpTimer("checking dependency cycles");
         checkDependencyCycles();
         ot2.end();
         _f.setInstance(instanceModel);
         _f.setLocalizer(localizer);
 
-        OpTimer ot3 = OpTimer.begin("finalizing triggerables");
+        OpTimer ot3 = new OpTimer("finalizing triggerables");
         try {
             _f.finalizeTriggerables();
         } catch (IllegalStateException ise) {

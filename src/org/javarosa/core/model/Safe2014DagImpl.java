@@ -23,6 +23,7 @@ import org.javarosa.core.model.instance.AbstractTreeElement;
 import org.javarosa.core.model.instance.FormInstance;
 import org.javarosa.core.model.instance.TreeElement;
 import org.javarosa.core.model.instance.TreeReference;
+import org.javarosa.core.util.OpTimer;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -337,33 +338,36 @@ public class Safe2014DagImpl extends LatestDagBase {
     * @param anchorRef
     */
    private Set<QuickTriggerable> evaluateTriggerables(
-         FormInstance mainInstance, EvaluationContext evalContext,
-         Set<QuickTriggerable> tv, TreeReference anchorRef,
-         Set<QuickTriggerable> alreadyEvaluated) {
-      // add all cascaded triggerables to queue
+       FormInstance mainInstance, EvaluationContext evalContext,
+       Set<QuickTriggerable> tv, TreeReference anchorRef,
+       Set<QuickTriggerable> alreadyEvaluated) {
+       OpTimer ot1 = new OpTimer("evaluateTriggerables " + tv.size());
+       // add all cascaded triggerables to queue
 
-      // Iterate through all of the currently known triggerables to be
-      // triggered
-      Set<QuickTriggerable> refSet = new HashSet<QuickTriggerable>(tv);
-      for (; !refSet.isEmpty();) {
-         Set<QuickTriggerable> newSet = new HashSet<QuickTriggerable>();
-         for (QuickTriggerable qt : refSet) {
-            // leverage the saved DAG edges.
-            // This may over-fill the set of triggerables.
-            // but should be faster than recomputing the edges.
-            // with value-change optimizations, this should be
-            // much faster.
-            for (QuickTriggerable qu : qt.t.getImmediateCascades()) {
-               if (!tv.contains(qu)) {
-                  tv.add(qu);
-                  newSet.add(qu);
+       OpTimer ot2 = new OpTimer("iterate through triggerables");
+       // Iterate through all of the currently known triggerables to be
+       // triggered
+       Set<QuickTriggerable> refSet = new HashSet<QuickTriggerable>(tv);
+       for (; !refSet.isEmpty(); ) {
+           final Set<QuickTriggerable> newSet = new HashSet<QuickTriggerable>();
+           for (QuickTriggerable qt : refSet) {
+               // leverage the saved DAG edges. This may over-fill the set of triggerables.
+               // but should be faster than recomputing the edges. with value-change optimizations, this should be
+               // much faster.
+               for (QuickTriggerable qu : qt.t.getImmediateCascades()) {
+                   if (!tv.contains(qu)) {
+                       tv.add(qu);
+                       newSet.add(qu);
+                   }
                }
-            }
-         }
-         refSet = newSet;
-      }
+           }
+           refSet = newSet;
+       }
+       ot2.end();
 
-      return doEvaluateTriggerables(mainInstance, evalContext, tv, anchorRef, alreadyEvaluated);
+       Set<QuickTriggerable> result = doEvaluateTriggerables(mainInstance, evalContext, tv, anchorRef, alreadyEvaluated);
+       ot1.end();
+       return result;
    }
 
    /**

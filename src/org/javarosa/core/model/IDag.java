@@ -22,12 +22,16 @@ import org.javarosa.core.model.condition.EvaluationContext;
 import org.javarosa.core.model.condition.IConditionExpr;
 import org.javarosa.core.model.condition.Recalculate;
 import org.javarosa.core.model.condition.Triggerable;
+import org.javarosa.core.model.data.IAnswerData;
 import org.javarosa.core.model.instance.FormInstance;
 import org.javarosa.core.model.instance.TreeElement;
 import org.javarosa.core.model.instance.TreeReference;
+import org.javarosa.core.util.OpTimer;
 import org.javarosa.debug.Event;
 import org.javarosa.debug.EventNotifier;
 import org.javarosa.form.api.FormEntryController;
+import org.javarosa.form.api.FormEntryModel;
+import org.javarosa.form.api.FormEntryPrompt;
 import org.javarosa.model.xform.XPathReference;
 
 import java.io.File;
@@ -255,36 +259,38 @@ public abstract class IDag {
      * to end, confirming that the entered values satisfy all constraints.
      * The FormEntryController is based upon the FormDef, but has its own
      * model and controller independent of anything at the UI layer.
-     *
-     * @param formEntryControllerToBeValidated
-     * @param markCompleted
-     * @return
      */
-   public ValidateOutcome validate(FormEntryController formEntryControllerToBeValidated, boolean markCompleted) {
+    public ValidateOutcome validate(FormEntryController formEntryController, boolean markCompleted) {
 
-      formEntryControllerToBeValidated.jumpToIndex(FormIndex.createBeginningOfFormIndex());
+        OpTimer ot1 = new OpTimer("IDag.validate");
+        formEntryController.jumpToIndex(FormIndex.createBeginningOfFormIndex());
 
-      int event;
-      while ((event =
-              formEntryControllerToBeValidated.stepToNextEvent()) != FormEntryController.EVENT_END_OF_FORM) {
-         if (event != FormEntryController.EVENT_QUESTION) {
-            continue;
-         } else {
-            FormIndex formControllerToBeValidatedFormIndex = formEntryControllerToBeValidated.getModel().getFormIndex();
-
-            int saveStatus =
-                    formEntryControllerToBeValidated.answerQuestion(formControllerToBeValidatedFormIndex,
-                            formEntryControllerToBeValidated.getModel().getQuestionPrompt().getAnswerValue(), false);
-            if (markCompleted && saveStatus != FormEntryController.ANSWER_OK) {
-               // jump to the error
-               ValidateOutcome vo = new ValidateOutcome(formControllerToBeValidatedFormIndex,
-                       saveStatus);
-               return vo;
+        int event;
+        while ((event = formEntryController.stepToNextEvent()) != FormEntryController.EVENT_END_OF_FORM) {
+            if (event == FormEntryController.EVENT_QUESTION) {
+                OpTimer ot2 = new OpTimer("process question");
+                FormEntryModel model = formEntryController.getModel();
+                FormIndex formIndex = model.getFormIndex();
+                FormEntryPrompt questionPrompt = model.getQuestionPrompt();
+                OpTimer ot4 = new OpTimer("questionPrompt.getAnswerValue()");
+                IAnswerData answerValue = questionPrompt.getAnswerValue();
+                ot4.end();
+                OpTimer ot3 = new OpTimer(String.format("IDag.validate answerQuestion %d %s %s",
+                    questionPrompt.getControlType(),
+                    questionPrompt.getQuestion().getTextID(), answerValue == null ? "" : answerValue.getDisplayText()));
+                int saveStatus = formEntryController.answerQuestion(formIndex, answerValue, false);
+                ot3.end();
+                ot2.end();
+                if (markCompleted && saveStatus != FormEntryController.ANSWER_OK) {
+                    ot1.end();
+                    // jump to the error
+                    return new ValidateOutcome(formIndex, saveStatus);
+                }
             }
-         }
-      }
-      return null;
-   }
+        }
+        ot1.end();
+        return null;
+    }
 
    /**
     * Specifies if unchanged answers should be trusted (and not re-committed).

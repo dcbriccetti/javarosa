@@ -32,6 +32,7 @@ import org.javarosa.core.services.transport.payload.ByteArrayPayload;
 import org.javarosa.core.services.transport.payload.DataPointerPayload;
 import org.javarosa.core.services.transport.payload.IDataPayload;
 import org.javarosa.core.services.transport.payload.MultiMessagePayload;
+import org.javarosa.core.util.OpTimer;
 import org.javarosa.xform.util.XFormAnswerDataSerializer;
 import org.javarosa.xform.util.XFormSerializer;
 import org.kxml2.kdom.Document;
@@ -116,6 +117,7 @@ public class XFormSerializingVisitor implements IInstanceSerializingVisitor {
         }
 
         public IDataPayload createSerializedPayload(FormInstance model, IDataReference ref) throws IOException {
+            OpTimer ot = new OpTimer("XFormSerializingVisitor.createSerializedPayload");
             init();
             rootRef = FormInstance.unpackReference(ref);
             if(this.serializer == null) {
@@ -126,6 +128,7 @@ public class XFormSerializingVisitor implements IInstanceSerializingVisitor {
                 //TODO: Did this strip necessary data?
                 byte[] form = XFormSerializer.getUtfBytes(theXmlDoc);
                 if(dataPointers.size() == 0) {
+                    ot.end();
                     return new ByteArrayPayload(form, null, IDataPayload.PAYLOAD_TYPE_XML);
                 }
                 MultiMessagePayload payload = new MultiMessagePayload();
@@ -133,9 +136,11 @@ public class XFormSerializingVisitor implements IInstanceSerializingVisitor {
                 for (IDataPointer pointer : dataPointers) {
                     payload.addPayload(new DataPointerPayload(pointer));
                 }
+                ot.end();
                 return payload;
             }
             else {
+                ot.end();
                 return null;
             }
         }

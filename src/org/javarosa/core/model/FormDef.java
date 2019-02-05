@@ -43,6 +43,7 @@ import org.javarosa.core.services.locale.Localizable;
 import org.javarosa.core.services.locale.Localizer;
 import org.javarosa.core.services.storage.IMetaData;
 import org.javarosa.core.services.storage.Persistable;
+import org.javarosa.core.util.OpTimer;
 import org.javarosa.core.util.externalizable.DeserializationException;
 import org.javarosa.core.util.externalizable.ExtUtil;
 import org.javarosa.core.util.externalizable.ExtWrapList;
@@ -65,16 +66,25 @@ import org.javarosa.xpath.XPathException;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.Enumeration;
 import java.util.HashMap;
+import java.util.IntSummaryStatistics;
 import java.util.List;
 import java.util.NoSuchElementException;
+import java.util.stream.Collector;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import static org.javarosa.core.model.LatestDagBase.tets;
 
 /**
  * Definition of a form. This has some meta data about the form definition and a
@@ -710,11 +720,13 @@ public class FormDef implements IFormElement, Localizable, Persistable, IMetaDat
     }
 
     public ValidateOutcome validate(boolean markCompleted) {
-
+        OpTimer ot = new OpTimer("FormDef.validate");
         FormEntryModel formEntryModelToBeValidated = new FormEntryModel(this);
         FormEntryController formEntryControllerToBeValidated = new FormEntryController(formEntryModelToBeValidated);
 
-        return dagImpl.validate(formEntryControllerToBeValidated, markCompleted);
+        ValidateOutcome outcome = dagImpl.validate(formEntryControllerToBeValidated, markCompleted);
+        ot.end();
+        return outcome;
     }
 
     public boolean evaluateConstraint(TreeReference ref, IAnswerData data) {
@@ -1114,8 +1126,11 @@ public class FormDef implements IFormElement, Localizable, Persistable, IMetaDat
     }
 
     public boolean postProcessInstance() {
+        OpTimer ot = new OpTimer("postProcessInstance");
         actionController.triggerActionsFromEvent(Action.EVENT_XFORMS_REVALIDATE, this);
-        return postProcessInstance(mainInstance.getRoot());
+        boolean b = postProcessInstance(mainInstance.getRoot());
+        ot.end();
+        return b;
     }
 
     /**

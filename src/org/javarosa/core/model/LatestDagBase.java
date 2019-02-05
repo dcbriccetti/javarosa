@@ -19,8 +19,10 @@
 package org.javarosa.core.model;
 
 import org.javarosa.core.model.condition.EvaluationContext;
+import org.javarosa.core.model.condition.Triggerable;
 import org.javarosa.core.model.instance.FormInstance;
 import org.javarosa.core.model.instance.TreeReference;
+import org.javarosa.core.util.OpTimer;
 import org.javarosa.debug.EvaluationResult;
 import org.javarosa.debug.Event;
 
@@ -36,55 +38,80 @@ import java.util.Set;
  */
 public abstract class LatestDagBase extends IDag {
 
+    public static class TriggerEvalTime {
+        public final int time;
+        public final Triggerable triggerable;
+
+        public TriggerEvalTime(int time, Triggerable triggerable) {
+            this.time = time;
+            this.triggerable = triggerable;
+        }
+
+        @Override
+        public String toString() {
+            return "TriggerEvalTime{" +
+                "time=" + time +
+                ", triggerable=" + triggerable +
+                '}';
+        }
+    }
+
+    public static List<TriggerEvalTime> tets = new ArrayList<>();
+
    protected LatestDagBase(EventNotifierAccessor accessor) {
       super(accessor);
    }
 
-   protected Set<QuickTriggerable> doEvaluateTriggerables(FormInstance mainInstance, EvaluationContext evalContext, Set<QuickTriggerable> tv, TreeReference anchorRef, Set<QuickTriggerable> alreadyEvaluated) {
-      // tv should now contain all of the triggerable components which are
-      // going
-      // to need to be addressed
-      // by this update.
-      // 'triggerables' is topologically-ordered by dependencies, so evaluate
-      // the triggerables in 'tv'
-      // in the order they appear in 'triggerables'
-      Set<QuickTriggerable> fired = new HashSet<QuickTriggerable>();
+    protected Set<QuickTriggerable> doEvaluateTriggerables(FormInstance mainInstance, EvaluationContext evalContext, Set<QuickTriggerable> tv, TreeReference anchorRef, Set<QuickTriggerable> alreadyEvaluated) {
+        // tv should now contain all of the triggerable components which are
+        // going
+        // to need to be addressed
+        // by this update.
+        // 'triggerables' is topologically-ordered by dependencies, so evaluate
+        // the triggerables in 'tv'
+        // in the order they appear in 'triggerables'
+        OpTimer ot1 = new OpTimer("LatestDagBase doEvaluateTriggerables " + tv.size());
 
-      Map<TreeReference, List<TreeReference>> firedAnchors = new LinkedHashMap<TreeReference, List<TreeReference>>();
+        Set<QuickTriggerable> fired = new HashSet<QuickTriggerable>();
 
-      for (QuickTriggerable qt : triggerablesDAG) {
-         if (tv.contains(qt) && !alreadyEvaluated.contains(qt)) {
+        Map<TreeReference, List<TreeReference>> firedAnchors = new LinkedHashMap<TreeReference, List<TreeReference>>();
 
-            List<TreeReference> affectedTriggers = qt.t.findAffectedTriggers(firedAnchors);
-            if (affectedTriggers.isEmpty()) {
-               affectedTriggers.add(anchorRef);
-            }
+        for (QuickTriggerable qt : triggerablesDAG) {
+            if (tv.contains(qt) && !alreadyEvaluated.contains(qt)) {
 
-            List<EvaluationResult> evaluationResults = evaluateTriggerable(
+                long start = System.currentTimeMillis();
+                List<TreeReference> affectedTriggers = qt.t.findAffectedTriggers(firedAnchors);
+                if (affectedTriggers.isEmpty()) {
+                    affectedTriggers.add(anchorRef);
+                }
+
+                List<EvaluationResult> evaluationResults = evaluateTriggerable(
                     mainInstance, evalContext, qt, affectedTriggers);
 
-            if (evaluationResults.size() > 0) {
-               fired.add(qt);
+                if (evaluationResults.size() > 0) {
+                    fired.add(qt);
 
-               for (EvaluationResult evaluationResult : evaluationResults) {
-                  TreeReference affectedRef = evaluationResult.getAffectedRef();
+                    for (EvaluationResult evaluationResult : evaluationResults) {
+                        TreeReference affectedRef = evaluationResult.getAffectedRef();
 
-                  TreeReference key = affectedRef.genericize();
-                  List<TreeReference> values = firedAnchors.get(key);
-                  if (values == null) {
-                     values = new ArrayList<TreeReference>();
-                     firedAnchors.put(key, values);
-                  }
-                  values.add(affectedRef);
-               }
+                        TreeReference key = affectedRef.genericize();
+                        List<TreeReference> values = firedAnchors.get(key);
+                        if (values == null) {
+                            values = new ArrayList<>();
+                            firedAnchors.put(key, values);
+                        }
+                        values.add(affectedRef);
+                    }
+                }
+
+                fired.add(qt);
+                int time = (int) (System.currentTimeMillis() - start);
+                tets.add(new TriggerEvalTime(time, qt.t));
             }
+        }
 
-            fired.add(qt);
-         }
-      }
-
-      return fired;
-   }
+        return fired;
+    }
 
    /**
     * Step 3 in DAG cascade. evaluate the individual triggerable expressions
